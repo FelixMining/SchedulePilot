@@ -1,5 +1,7 @@
 # SchedulePilot
 
+**[schedulepilot.dev](https://schedulepilot.dev)**
+
 My university publishes our timetable as an ICS feed. Subscribing to it from Apple Calendar works, but that's about it: course titles are raw codes like `HAI301I`, descriptions are a wall of group names and export timestamps, mentoring slots I never attend clutter the week, and everything shares a single color.
 
 SchedulePilot sits between the university feed and your calendar app. It fetches the original feed, applies your rules and serves a clean feed that you subscribe to instead. Updates from the university still come through automatically.
@@ -65,7 +67,7 @@ DATABASE_URL="postgresql://..." npm run db:migrate
 npm run dev
 ```
 
-Deploying:
+Deploying (set `APP_URL` and the custom domain in `wrangler.jsonc` to your own domain first; requests to any other host, or over plain HTTP, are redirected there):
 
 ```bash
 npx wrangler secret put DATABASE_URL

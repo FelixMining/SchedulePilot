@@ -191,3 +191,38 @@ describe("calendars and feeds", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("canonical origin", () => {
+  it("redirects other hosts and plain http to APP_URL", async () => {
+    const ctx = await setup(ade);
+    const env = { ...ctx.env, APP_URL: "https://schedule.example.com" };
+
+    const http = await ctx.app.request("http://schedule.example.com/feed/abc.ics?x=1", {}, env);
+    expect(http.status).toBe(301);
+    expect(http.headers.get("location")).toBe("https://schedule.example.com/feed/abc.ics?x=1");
+
+    const other = await ctx.app.request("https://foo.workers.dev/app", { method: "POST" }, env);
+    expect(other.status).toBe(308);
+    expect(other.headers.get("location")).toBe("https://schedule.example.com/app");
+
+    const ok = await ctx.app.request("https://schedule.example.com/api/auth/me", {}, env);
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("strict-transport-security")).toContain("max-age");
+  });
+
+  it("keeps the port of APP_URL", async () => {
+    const ctx = await setup(ade);
+    const env = { ...ctx.env, APP_URL: "http://localhost:4173" };
+    const res = await ctx.app.request("http://127.0.0.1:8080/login?a=b", {}, env);
+    expect(res.headers.get("location")).toBe("http://localhost:4173/login?a=b");
+  });
+});
+
+describe("static assets", () => {
+  it("serves the React app for every other path", async () => {
+    const ctx = await setup(ade);
+    const assets = { fetch: async (req: Request) => new Response(`asset ${new URL(req.url).pathname}`) };
+    const res = await ctx.app.request("http://localhost/app/calendars/x", {}, { ...ctx.env, ASSETS: assets });
+    expect(await res.text()).toBe("asset /app/calendars/x");
+  });
+});
