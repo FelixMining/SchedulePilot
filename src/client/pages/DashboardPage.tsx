@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { api } from "../api";
-import { Button, Card, ColorDot, EmptyState, ErrorMessage, Field, Input, Spinner } from "../components/ui";
+import { Button, Card, EmptyState, ErrorMessage, Field, Input, Spinner } from "../components/ui";
 import { formatRelative } from "../format";
 
 function NewCalendarForm({ onDone }: { onDone?: () => void }) {
@@ -16,7 +16,7 @@ function NewCalendarForm({ onDone }: { onDone?: () => void }) {
     onSuccess: ({ calendar }) => {
       qc.invalidateQueries({ queryKey: ["calendars"] });
       onDone?.();
-      navigate(`/app/calendars/${calendar.id}/courses`);
+      navigate(`/app/calendars/${calendar.id}/week`);
     },
   });
 
@@ -80,12 +80,9 @@ export function DashboardPage() {
       {calendars.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {calendars.map((cal) => (
-            <Link key={cal.id} to={`/app/calendars/${cal.id}/courses`} className="group">
+            <Link key={cal.id} to={`/app/calendars/${cal.id}/week`} className="group">
               <Card className="h-full p-5 transition-shadow group-hover:shadow-md">
-                <div className="flex items-center gap-2">
-                  <ColorDot color={cal.color} />
-                  <h2 className="truncate font-semibold">{cal.name}</h2>
-                </div>
+                <h2 className="truncate font-semibold">{cal.name}</h2>
                 <p className="mt-1 truncate text-xs text-slate-500">{new URL(cal.sourceUrl).host}</p>
                 <dl className="mt-4 space-y-1 text-sm text-slate-600">
                   <div className="flex justify-between">
