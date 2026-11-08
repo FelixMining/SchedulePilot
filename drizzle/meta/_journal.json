@@ -8,6 +8,20 @@
       "when": 1794152968478,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794163427472,
+      "tag": "0001_calendar_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794163428092,
+      "tag": "0002_drop_rules_and_groups",
+      "breakpoints": true
     }
   ]
 }

@@ -73,49 +73,55 @@ describe("calendars and feeds", () => {
     expect(res.data.error).toMatch(/ICS/);
   });
 
-  it("builds a customised feed end to end", async () => {
+  it("builds customised feeds end to end", async () => {
     const calendar = await createCalendar();
     expect(calendar.sourceUrl).toBe("https://ade.example.com/cal.ics");
+    expect(calendar.settings.colorMode).toBe("course");
 
-    const courses = await ctx.request("GET", `/api/calendars/${calendar.id}/courses`);
-    expect(courses.data.courses.map((c: any) => c.key)).toEqual(["HAI301I", "HAI302I", "Mentorat L3"]);
+    const events = await ctx.request("GET", `/api/calendars/${calendar.id}/events`);
+    expect(events.data.events).toHaveLength(7);
+    expect(events.data.events[0]).toMatchObject({ key: "HAI101I", courseName: "Algorithmique 1", type: "CM" });
 
-    const group = await ctx.request("POST", `/api/calendars/${calendar.id}/groups`, { name: "Algo", color: "#3366ff" });
-    expect(group.status).toBe(201);
-
-    await ctx.request("PUT", `/api/calendars/${calendar.id}/courses/HAI301I`, {
-      title: "Algorithmique {type}",
-      groupId: group.data.group.id,
-    });
-    await ctx.request("PUT", `/api/calendars/${calendar.id}/courses/${encodeURIComponent("Mentorat L3")}`, {
-      hidden: true,
-    });
-    const rule = await ctx.request("POST", `/api/calendars/${calendar.id}/rules`, {
-      name: "Description",
-      conditions: [],
-      actions: [{ type: "set_description", template: "{type} · {location}" }],
-    });
-    expect(rule.status).toBe(201);
+    const settings = {
+      ...calendar.settings,
+      hideKeywords: ["mentorat"],
+      courses: { HAI101I: { name: "Algo", color: "#3366ff" }, SPORT: { hidden: true } },
+    };
+    const saved = await ctx.request("PUT", `/api/calendars/${calendar.id}/settings`, settings);
+    expect(saved.status).toBe(200);
+    expect(saved.data.calendar.settings.courses.HAI101I.name).toBe("Algo");
 
     const all = await ctx.request("GET", `/feed/${calendar.feedToken}.ics`);
     expect(all.status).toBe(200);
-    expect(all.data).toContain("SUMMARY:Algorithmique TD");
-    expect(all.data).toContain("SUMMARY:HAI-302I Bases de données TP");
+    expect(all.data).toContain("SUMMARY:Algo · TD");
+    expect(all.data).toContain("LOCATION:Salle info 36.204");
+    expect(all.data).toContain("SUMMARY:EXAMEN · Bases des mathématiques pour l'informatique");
     expect(all.data).not.toContain("Mentorat");
-    expect(all.data).toContain("DESCRIPTION:TP · TP 16.02");
+    expect(all.data).not.toContain("SPORT");
 
-    const algo = await ctx.request("GET", `/feed/${calendar.feedToken}/${group.data.group.id}.ics`);
-    expect(algo.data).toContain("X-APPLE-CALENDAR-COLOR:#3366ff");
-    expect(algo.data).not.toContain("Bases de données");
+    const algo = await ctx.request("GET", `/feed/${calendar.feedToken}/hai101i.ics`);
+    expect(algo.data).toContain("X-WR-CALNAME:Algo");
+    expect(algo.data).toContain("X-APPLE-CALENDAR-COLOR:#3366FF");
+    expect(algo.data).not.toContain("Programmation");
 
-    const rest = await ctx.request("GET", `/feed/${calendar.feedToken}/ungrouped.ics`);
-    expect(rest.data).toContain("Bases de données");
-    expect(rest.data).not.toContain("Algorithmique");
+    const exams = await ctx.request("GET", `/feed/${calendar.feedToken}/examens.ics`);
+    expect(exams.data).toContain("TRIGGER:-P1D");
 
-    // Clearing the quick edit removes the managed rule.
-    await ctx.request("PUT", `/api/calendars/${calendar.id}/courses/HAI301I`, { title: "" });
-    const detail = await ctx.request("GET", `/api/calendars/${calendar.id}`);
-    expect(detail.data.rules.map((r: any) => r.courseKey)).toEqual(["Mentorat L3", null]);
+    expect((await ctx.request("GET", `/feed/${calendar.feedToken}/inconnu.ics`)).status).toBe(404);
+
+    const profile = await ctx.request("GET", `/feed/${calendar.feedToken}/apple.mobileconfig`);
+    expect(profile.status).toBe(200);
+    expect(profile.data).toContain(`localhost/feed/${calendar.feedToken}/hai101i.ics`);
+    expect(profile.data).toContain(`localhost/feed/${calendar.feedToken}/examens.ics`);
+  });
+
+  it("validates settings", async () => {
+    const calendar = await createCalendar();
+    const res = await ctx.request("PUT", `/api/calendars/${calendar.id}/settings`, {
+      ...calendar.settings,
+      colorMode: "rainbow",
+    });
+    expect(res.status).toBe(400);
   });
 
   it("serves the cached copy when upstream is down", async () => {
@@ -142,17 +148,6 @@ describe("calendars and feeds", () => {
     expect(ctx.upstream.calls).toBe(before);
   });
 
-  it("removes group references when a group is deleted", async () => {
-    const calendar = await createCalendar();
-    const group = (await ctx.request("POST", `/api/calendars/${calendar.id}/groups`, { name: "G", color: "#000000" }))
-      .data.group;
-    await ctx.request("PUT", `/api/calendars/${calendar.id}/courses/HAI302I`, { title: "BDD", groupId: group.id });
-    expect((await ctx.request("DELETE", `/api/calendars/${calendar.id}/groups/${group.id}`)).status).toBe(204);
-
-    const detail = await ctx.request("GET", `/api/calendars/${calendar.id}`);
-    expect(detail.data.rules[0].actions).toEqual([{ type: "set_title", template: "BDD" }]);
-  });
-
   it("rotates the feed token", async () => {
     const calendar = await createCalendar();
     const rotated = await ctx.request("POST", `/api/calendars/${calendar.id}/rotate-token`);
@@ -168,15 +163,6 @@ describe("calendars and feeds", () => {
     expect((await ctx.request("GET", `/api/calendars/${calendar.id}`)).status).toBe(404);
     expect((await ctx.request("DELETE", `/api/calendars/${calendar.id}`)).status).toBe(404);
     expect((await ctx.request("GET", "/api/calendars")).data.calendars).toEqual([]);
-  });
-
-  it("rejects invalid rules", async () => {
-    const calendar = await createCalendar();
-    const res = await ctx.request("POST", `/api/calendars/${calendar.id}/rules`, {
-      conditions: [{ field: "summary", operator: "regex", value: "(" }],
-      actions: [{ type: "hide" }],
-    });
-    expect(res.status).toBe(400);
   });
 
   it("blocks cross-site form posts", async () => {

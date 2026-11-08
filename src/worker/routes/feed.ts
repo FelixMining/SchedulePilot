@@ -1,66 +1,88 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { buildFeed, type FeedFilter } from "../../shared/calendar";
+import { buildFeed, readEvents } from "../../shared/calendar";
+import { buildProfile } from "../../shared/mobileconfig";
+import { listFeeds } from "../../shared/render";
+import { resolveSettings } from "../../shared/settings";
 import type { AppContext, AppEnv } from "../context";
-import { calendars, groups } from "../db/schema";
-import { loadRules } from "../lib/rules";
+import { calendars, type CalendarRow } from "../db/schema";
 import { loadSource } from "../lib/source";
 
-const notFound = (c: AppContext) => c.text("Not found", 404);
-const stripExt = (s: string) => s.replace(/\.ics$/i, "");
+const stripExt = (s: string) => s.replace(/\.(ics|mobileconfig)$/i, "");
 
-/**
- * Public subscription URLs:
- *   /feed/<token>.ics            every visible event
- *   /feed/<token>/ungrouped.ics  events not assigned to a group
- *   /feed/<token>/<group>.ics    events of one group
- *
- * The token is the only secret, so it is long and can be rotated from the UI.
- */
-async function serveFeed(c: AppContext, token: string, groupParam: string | null) {
+async function load(c: AppContext, token: string) {
   const db = c.get("db");
   const [calendar] = await db.select().from(calendars).where(eq(calendars.feedToken, token)).limit(1);
-  if (!calendar) return notFound(c);
-
-  let filter: FeedFilter = { kind: "all" };
-  let name = calendar.name;
-  let color = calendar.color;
-
-  if (groupParam === "ungrouped") {
-    filter = { kind: "ungrouped" };
-    name = `${calendar.name} · Autres`;
-  } else if (groupParam) {
-    const groupList = await db.select().from(groups).where(eq(groups.calendarId, calendar.id));
-    const group = groupList.find((g) => g.id === groupParam);
-    if (!group) return notFound(c);
-    filter = { kind: "group", groupId: group.id };
-    name = `${calendar.name} · ${group.name}`;
-    color = group.color;
-  }
-
-  let ics: string;
+  if (!calendar) return null;
   try {
-    ({ ics } = await loadSource(db, calendar, { fetchImpl: c.get("deps").fetch }));
+    const { ics } = await loadSource(db, calendar, { fetchImpl: c.get("deps").fetch });
+    return { calendar, ics, settings: resolveSettings(calendar.settings) };
   } catch {
-    return c.text("Upstream calendar unavailable", 502);
+    return { calendar, ics: null, settings: resolveSettings(calendar.settings) };
   }
-
-  const body = buildFeed(ics, await loadRules(db, calendar.id), { name, color, filter });
-
-  const touch = db.update(calendars).set({ lastServedAt: new Date() }).where(eq(calendars.id, calendar.id));
-  try {
-    c.executionCtx.waitUntil(touch);
-  } catch {
-    await touch; // no execution context (tests)
-  }
-
-  return c.body(body, 200, {
-    "Content-Type": "text/calendar; charset=utf-8",
-    "Content-Disposition": `inline; filename="${stripExt(groupParam ?? "calendar")}.ics"`,
-    "Cache-Control": "private, max-age=300",
-  });
 }
 
+async function touch(c: AppContext, calendar: CalendarRow) {
+  const update = c.get("db").update(calendars).set({ lastServedAt: new Date() }).where(eq(calendars.id, calendar.id));
+  try {
+    c.executionCtx.waitUntil(update);
+  } catch {
+    await update; // no execution context (tests)
+  }
+}
+
+const icsResponse = (c: AppContext, body: string, filename: string) =>
+  c.body(body, 200, {
+    "Content-Type": "text/calendar; charset=utf-8",
+    "Content-Disposition": `inline; filename="${filename}.ics"`,
+    "Cache-Control": "private, max-age=300",
+  });
+
+/**
+ * Public subscription URLs (the token is the only secret and can be rotated):
+ *   /feed/<token>.ics                  every visible event, one calendar
+ *   /feed/<token>/<calendar>.ics       one of the calendars listed by `listFeeds`
+ *   /feed/<token>/apple.mobileconfig   Apple profile subscribing to all of them
+ */
 export const feedRoutes = new Hono<AppEnv>()
-  .get("/:file", (c) => serveFeed(c, stripExt(c.req.param("file")), null))
-  .get("/:token/:file", (c) => serveFeed(c, c.req.param("token"), stripExt(c.req.param("file"))));
+  .get("/:file", async (c) => {
+    const data = await load(c, stripExt(c.req.param("file")));
+    if (!data) return c.text("Not found", 404);
+    if (!data.ics) return c.text("Upstream calendar unavailable", 502);
+    await touch(c, data.calendar);
+    const body = buildFeed(data.ics, data.settings, {
+      name: data.calendar.name,
+      color: data.settings.singleColor,
+      feed: null,
+    });
+    return icsResponse(c, body, "calendar");
+  })
+
+  .get("/:token/:file", async (c) => {
+    const data = await load(c, c.req.param("token"));
+    if (!data) return c.text("Not found", 404);
+    if (!data.ics) return c.text("Upstream calendar unavailable", 502);
+
+    const feeds = listFeeds(readEvents(data.ics), data.settings);
+    const file = c.req.param("file");
+
+    if (file === "apple.mobileconfig") {
+      const origin = new URL(c.req.url).origin;
+      const token = data.calendar.feedToken;
+      const profile = await buildProfile({
+        identifier: `dev.schedulepilot.${token.slice(0, 12)}`,
+        name: data.calendar.name,
+        calendars: feeds.map((f) => ({ key: f.key, name: f.name, url: `${origin}/feed/${token}/${f.key}.ics` })),
+      });
+      return c.body(profile, 200, {
+        "Content-Type": "application/x-apple-aspen-config",
+        "Content-Disposition": `attachment; filename="schedulepilot.mobileconfig"`,
+      });
+    }
+
+    const key = stripExt(file);
+    const feed = feeds.find((f) => f.key === key);
+    if (!feed) return c.text("Not found", 404);
+    await touch(c, data.calendar);
+    return icsResponse(c, buildFeed(data.ics, data.settings, { name: feed.name, color: feed.color, feed: key }), key);
+  });
