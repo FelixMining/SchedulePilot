@@ -14,13 +14,14 @@ The interface is in French since it's aimed at French university students.
 
 ## Features
 
-- **Rename courses**: `HAI301I Algorithmique avancée TD` → `Algorithmique · TD`, using templates with variables (`{type}`, `{code}`, `{location}`, regex named groups…).
-- **Hide events**: drop mentoring, cancelled slots or other groups' sessions.
-- **Rewrite descriptions and locations**: keep only what matters, e.g. `{type} · {location}`.
-- **Colors**: Apple Calendar only supports one color per subscribed calendar, so events can be sorted into groups. Each group gets its own feed URL and you subscribe once per group.
-- **Courses view**: courses are detected from the feed and grouped by code, so most of the setup is a matter of typing a name next to each one.
-- **Rule engine** for anything more specific: ordered rules, `all`/`any` conditions on title, description or location (`contains`, `equals`, `starts with`, `regex`…), multiple actions per rule.
-- **Live preview** of upcoming events with a side-by-side view of the original data.
+- **Automatic cleanup**: each event is parsed into structured data. The real course name is pulled from the description (`HAI101I` → `Algorithmique 1`), the session type is inferred from the title and the room (amphitheatre → CM, computer room → TP…), teachers are reformatted (`DUPONT   JEAN` → `Jean Dupont`), rooms are normalised and the list of every group attending a lecture is dropped.
+- **One line per course**: rename it, pick a color, hide it. Changes are saved as you type.
+- **Exams**: detected from a configurable keyword list, highlighted in the title, put in their own red calendar and given a reminder the day before.
+- **Hide by keyword**: e.g. everything containing "mentorat".
+- **Formatting options**: where the session type goes in the title, which details appear in the description, reminders before exams or every class.
+- **Colors**: Apple Calendar only supports one color per subscribed calendar, so events are split into several calendars, either one per course, one per session type, or a single one.
+- **One-tap install**: an Apple configuration profile subscribes an iPhone or a Mac to all the generated calendars at once.
+- **Live week preview**, rendered in the browser with the same code that builds the feeds, so it always matches what the calendar app will show.
 - **Resilient**: the upstream feed is cached; if the university server is down, the last good copy keeps being served. A cron trigger refreshes active calendars in the background.
 
 ## Stack
@@ -45,8 +46,11 @@ Authentication is email + password with PBKDF2-SHA256 hashes (WebCrypto) and ser
 src/
   shared/        code used by both the worker and the UI
     ics/         ICS parsing, serialization, dates
-    rules/       rule schema, template rendering, type/code detection, engine
-    calendar.ts  feed building, preview, course summary
+    extract.ts   turns raw events into structured data (course, type, rooms, teachers…)
+    render.ts    applies the user's settings to an event, splits events into calendars
+    settings.ts  settings model and defaults
+    calendar.ts  feed building
+    mobileconfig.ts  Apple configuration profile
   worker/        Cloudflare Worker
     routes/      auth, calendars, public feeds
     lib/         sessions, crypto, upstream fetching/caching
@@ -89,17 +93,17 @@ npm run deploy
 
 Each calendar gets a random token. The token is the only secret, so it can be regenerated from the UI if a link leaks.
 
-| URL                            | Content                         |
-| ------------------------------ | ------------------------------- |
-| `/feed/<token>.ics`            | every visible event             |
-| `/feed/<token>/<group-id>.ics` | events assigned to one group    |
-| `/feed/<token>/ungrouped.ics`  | visible events not in any group |
+| URL                                | Content                                       |
+| ---------------------------------- | --------------------------------------------- |
+| `/feed/<token>.ics`                | every visible event, in one calendar          |
+| `/feed/<token>/<calendar>.ics`     | one of the generated calendars (course, type) |
+| `/feed/<token>/apple.mobileconfig` | Apple profile subscribing to all of them      |
 
 ## Ideas
 
 - Rate limiting on login (Workers rate limiting binding)
-- Import/export of rules to share a setup with classmates
-- Per-group default description templates
+- Share a setup with classmates (same course names and colors)
+- Merge several university feeds into one
 
 ## License
 
