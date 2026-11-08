@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 import { api, feedUrl, webcalUrl } from "../../api";
 import { ColorPicker } from "../../components/ColorPicker";
 import { Button, Card, CopyField, cx, ErrorMessage, Toggle } from "../../components/ui";
@@ -15,6 +16,23 @@ const MODES: { value: ColorMode; title: string; text: string }[] = [
 ];
 
 const TYPES: SessionType[] = ["CM", "TD", "TP", "Autre"];
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      className="w-16 text-right text-sm text-slate-500 hover:text-slate-800"
+    >
+      {copied ? "Copié ✓" : "Copier"}
+    </button>
+  );
+}
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
@@ -112,7 +130,7 @@ export function SubscribeTab() {
           )}
         </Step>
 
-        <Step n={2} title="Abonnez-vous dans Apple Calendar">
+        <Step n={2} title="Abonnez-vous dans votre calendrier">
           <p className="text-sm text-slate-500">
             {feeds.length > 1
               ? `Ajoutez chacun des ${feeds.length} calendriers de la liste : un clic sur « S'abonner » ouvre directement Calendrier.`
@@ -126,6 +144,9 @@ export function SubscribeTab() {
             </li>
             <li>Choisissez une actualisation toutes les heures. La couleur se change avec un clic droit → Infos.</li>
           </ul>
+          <Link to="/guide" className="inline-block text-sm font-medium text-brand-700 hover:underline">
+            Guide pas à pas : Apple Calendar, Google Agenda, Outlook →
+          </Link>
         </Step>
       </Card>
 
@@ -152,13 +173,7 @@ export function SubscribeTab() {
                   <a href={webcalUrl(url)} className="text-sm text-brand-600 hover:underline">
                     S'abonner
                   </a>
-                  <button
-                    type="button"
-                    onClick={() => navigator.clipboard.writeText(url)}
-                    className="text-sm text-slate-500 hover:text-slate-800"
-                  >
-                    Copier
-                  </button>
+                  <CopyButton value={url} />
                 </li>
               );
             })}
