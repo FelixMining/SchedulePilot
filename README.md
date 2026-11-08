@@ -21,6 +21,8 @@ The interface is in French since it's aimed at French university students.
 - **Formatting options**: where the session type goes in the title, which details appear in the description, reminders before exams or every class.
 - **Colors**: Apple Calendar only supports one color per subscribed calendar, so events are split into several calendars, either one per course, one per session type, or a single one.
 - **Live week preview**, rendered in the browser with the same code that builds the feeds, so it always matches what the calendar app will show.
+- **Setup guide** with step-by-step illustrations for Apple Calendar (Mac and iPhone), Google Calendar and Outlook.
+- **Privacy**: minimal data, a single strictly necessary cookie, data export and account deletion from the app, abandoned accounts deleted after two years, rate-limited login.
 - **Resilient**: the upstream feed is cached; if the university server is down, the last good copy keeps being served. A cron trigger refreshes active calendars in the background.
 
 ## Stack

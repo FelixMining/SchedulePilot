@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Logo } from "../components/Logo";
+import { PublicHeader, SiteFooter } from "../components/PublicLayout";
 
 const features = [
   {
@@ -67,44 +67,41 @@ function After() {
   );
 }
 
+const freePoints = [
+  "Aucun moyen de paiement demandé, jamais",
+  "Pas d'abonnement, pas de version payante, pas de publicité",
+  "Pour tous les étudiants, quelle que soit leur université",
+  "Un compte suffit : une adresse e-mail et un mot de passe",
+];
+
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <header className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
-        <Logo />
-        <nav className="flex items-center gap-1 text-sm font-medium">
-          <Link to="/login" className="rounded-lg px-3 py-2 text-slate-600 hover:text-slate-900">
-            Connexion
-          </Link>
-          <Link to="/register" className="rounded-lg bg-slate-900 px-3 py-2 text-white hover:bg-slate-700">
-            Créer un compte
-          </Link>
-        </nav>
-      </header>
+    <div className="flex min-h-screen flex-col bg-white">
+      <PublicHeader />
 
-      <main>
+      <main className="flex-1">
         <section className="mx-auto grid max-w-5xl items-center gap-12 px-5 pt-12 pb-20 md:grid-cols-[1.1fr_1fr] md:pt-20">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
               Votre emploi du temps de fac, lisible dans Apple Calendar.
             </h1>
             <p className="mt-5 text-lg text-pretty text-slate-600">
-              SchedulePilot est un outil gratuit et open source. Il récupère l'emploi du temps publié par votre
-              université, le nettoie selon vos réglages et vous le renvoie sous forme d'abonnement, toujours à jour.
+              SchedulePilot récupère l'emploi du temps publié par votre université, le nettoie selon vos réglages et
+              vous le renvoie sous forme d'abonnement, toujours à jour. Gratuit et open source.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 to="/register"
                 className="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
               >
-                Commencer
+                Créer un compte gratuit
               </Link>
-              <a
-                href="https://github.com/FelixMining/SchedulePilot"
+              <Link
+                to="/guide"
                 className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
               >
-                Voir le code source
-              </a>
+                Voir le guide
+              </Link>
             </div>
           </div>
           <div className="space-y-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 sm:p-6">
@@ -138,17 +135,37 @@ export function LandingPage() {
               </li>
             ))}
           </ol>
+          <p className="mt-8 text-sm text-slate-600">
+            Apple Calendar, Google Agenda ou Outlook :{" "}
+            <Link to="/guide" className="font-medium text-slate-900 underline underline-offset-4">
+              le guide montre chaque étape
+            </Link>
+            .
+          </p>
+        </section>
+
+        <section className="border-t border-slate-100 bg-slate-50/60">
+          <div className="mx-auto grid max-w-5xl gap-8 px-5 py-16 md:grid-cols-2 md:items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Gratuit, pour toujours</h2>
+              <p className="mt-3 text-slate-600">
+                SchedulePilot est un projet personnel et open source. Il est entièrement gratuit et le restera, pour
+                tout le monde.
+              </p>
+            </div>
+            <ul className="space-y-2.5 text-sm text-slate-700">
+              {freePoints.map((p) => (
+                <li key={p} className="flex gap-3">
+                  <span className="mt-0.5 text-emerald-600">✓</span>
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       </main>
 
-      <footer className="border-t border-slate-100">
-        <div className="mx-auto flex max-w-5xl flex-wrap justify-between gap-2 px-5 py-6 text-sm text-slate-500">
-          <span>Fonctionne aussi avec Google Agenda et Outlook.</span>
-          <a href="https://github.com/FelixMining/SchedulePilot" className="hover:text-slate-700">
-            GitHub
-          </a>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
