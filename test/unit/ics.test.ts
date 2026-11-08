@@ -54,8 +54,8 @@ describe("parseIcs", () => {
   it("reads an ADE export", () => {
     const cal = parseIcs(ade);
     const events = cal.components.filter((c) => c.name === "VEVENT");
-    expect(events).toHaveLength(5);
-    expect(getText(events[0]!, "DESCRIPTION")).toContain("(Exporté le:01/09/2026 10:00)");
+    expect(events).toHaveLength(7);
+    expect(getText(events[0]!, "DESCRIPTION")).toContain("Algorithmique 1\nA valider\nDUPONT   JEAN");
   });
 
   it("survives a parse/serialize round-trip", () => {
