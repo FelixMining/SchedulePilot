@@ -23,7 +23,9 @@ export async function startSession(c: AppContext, userId: string): Promise<void>
   const token = randomToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * DAY_MS);
   const id = await sha256(token);
-  await c.get("db").insert(sessions).values({ id, userId, expiresAt });
+  const db = c.get("db");
+  await db.insert(sessions).values({ id, userId, expiresAt });
+  await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, userId));
   setCookie(c, COOKIE, token, cookieOptions(c, expiresAt));
 }
 
@@ -59,6 +61,7 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   if (row.expiresAt.getTime() - Date.now() < (SESSION_DAYS / 2) * DAY_MS) {
     const expiresAt = new Date(Date.now() + SESSION_DAYS * DAY_MS);
     await db.update(sessions).set({ expiresAt }).where(eq(sessions.id, id));
+    await db.update(users).set({ lastSeenAt: new Date() }).where(eq(users.id, row.user.id));
     setCookie(c, COOKIE, token, cookieOptions(c, expiresAt));
   }
 

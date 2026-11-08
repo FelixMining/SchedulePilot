@@ -10,6 +10,8 @@ export const users = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
+    /** Last login or session renewal. Used to delete abandoned accounts. */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     ...timestamps,
   },
   (t) => [uniqueIndex("users_email_idx").on(t.email)],

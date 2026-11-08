@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { parseBody, requireUser, type AppEnv } from "../context";
-import { sessions, users } from "../db/schema";
+import { resolveSettings } from "../../shared/settings";
+import { parseBody, requireUser, type AppContext, type AppEnv } from "../context";
+import { calendars, sessions, users } from "../db/schema";
 import { hashPassword, verifyPassword } from "../lib/crypto";
 import { endSession, startSession } from "../lib/session";
 
@@ -16,12 +17,26 @@ const credentialsSchema = z.object({
   password: z.string().min(8, "Le mot de passe doit faire au moins 8 caractères").max(200),
 });
 
+const registerSchema = credentialsSchema.extend({
+  acceptTerms: z.literal(true, { message: "Vous devez accepter les conditions d'utilisation" }),
+});
+
+/** Slows down password guessing: a few attempts per minute and per IP address. */
+async function rateLimit(c: AppContext, action: string) {
+  const limiter = c.env?.AUTH_LIMITER;
+  if (!limiter) return;
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const { success } = await limiter.limit({ key: `${action}:${ip}` });
+  if (!success) throw new HTTPException(429, { message: "Trop de tentatives, réessayez dans une minute" });
+}
+
 // Used to keep login timing similar whether or not the account exists.
 const DUMMY_HASH = "pbkdf2-sha256$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 export const authRoutes = new Hono<AppEnv>()
   .post("/register", async (c) => {
-    const { email, password } = await parseBody(c, credentialsSchema);
+    await rateLimit(c, "register");
+    const { email, password } = await parseBody(c, registerSchema);
     const db = c.get("db");
 
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
@@ -36,6 +51,7 @@ export const authRoutes = new Hono<AppEnv>()
   })
 
   .post("/login", async (c) => {
+    await rateLimit(c, "login");
     const { email, password } = await parseBody(c, credentialsSchema);
     const [user] = await c.get("db").select().from(users).where(eq(users.email, email)).limit(1);
 
@@ -76,6 +92,33 @@ export const authRoutes = new Hono<AppEnv>()
     await db.delete(sessions).where(eq(sessions.userId, user.id));
     await startSession(c, user.id);
     return c.body(null, 204);
+  })
+
+  // Right of access and portability (GDPR art. 15 and 20).
+  .get("/me/export", async (c) => {
+    const user = requireUser(c);
+    const rows = await c
+      .get("db")
+      .select()
+      .from(calendars)
+      .where(eq(calendars.userId, user.id))
+      .orderBy(asc(calendars.createdAt));
+    const data = {
+      exportedAt: new Date().toISOString(),
+      account: { email: user.email, createdAt: user.createdAt, lastSeenAt: user.lastSeenAt },
+      calendars: rows.map((cal) => ({
+        name: cal.name,
+        sourceUrl: cal.sourceUrl,
+        settings: resolveSettings(cal.settings),
+        createdAt: cal.createdAt,
+        lastFetchedAt: cal.cachedAt,
+        lastServedAt: cal.lastServedAt,
+      })),
+    };
+    return c.body(JSON.stringify(data, null, 2), 200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": 'attachment; filename="schedulepilot-export.json"',
+    });
   })
 
   .delete("/me", async (c) => {

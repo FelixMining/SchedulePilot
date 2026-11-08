@@ -2,6 +2,7 @@ import { and, asc, gt, isNotNull, lt, or, isNull } from "drizzle-orm";
 import { createApp } from "./app";
 import { createNeonDb } from "./db/client";
 import { calendars } from "./db/schema";
+import { purgeExpiredData } from "./lib/maintenance";
 import { CACHE_TTL_MS, loadSource } from "./lib/source";
 
 const app = createApp({ getDb: (env) => createNeonDb(env.DATABASE_URL) });
@@ -36,7 +37,12 @@ async function refreshActiveCalendars(env: Env) {
 
 export default {
   fetch: app.fetch,
-  async scheduled(_controller, env, ctx) {
+  async scheduled(controller, env, ctx) {
     ctx.waitUntil(refreshActiveCalendars(env));
+    // Retention rules run once a day, on the first trigger after 3am UTC.
+    const at = new Date(controller.scheduledTime);
+    if (at.getUTCHours() === 3 && at.getUTCMinutes() < 20) {
+      ctx.waitUntil(purgeExpiredData(createNeonDb(env.DATABASE_URL)).then((r) => console.log("purged", r)));
+    }
   },
 } satisfies ExportedHandler<Env>;

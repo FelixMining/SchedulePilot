@@ -20,6 +20,7 @@
   "vars": {
     "APP_URL": "https://schedulepilot.dev",
   },
+  "ratelimits": [{ "name": "AUTH_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }],
   "triggers": {
     "crons": ["*/20 * * * *"],
   },
