@@ -15,6 +15,21 @@ const DESCRIPTION_FIELDS: { key: keyof Settings["description"]; label: string }[
   { key: "groups", label: "Groupes concernés" },
 ];
 
+const TIME_ZONES = [
+  { value: "Europe/Paris", label: "France métropolitaine" },
+  { value: "Europe/Brussels", label: "Belgique" },
+  { value: "Europe/Zurich", label: "Suisse" },
+  { value: "Europe/Luxembourg", label: "Luxembourg" },
+  { value: "America/Toronto", label: "Québec, Ontario" },
+  { value: "America/Guadeloupe", label: "Guadeloupe" },
+  { value: "America/Martinique", label: "Martinique" },
+  { value: "America/Cayenne", label: "Guyane" },
+  { value: "Indian/Reunion", label: "La Réunion" },
+  { value: "Indian/Mayotte", label: "Mayotte" },
+  { value: "Pacific/Noumea", label: "Nouvelle-Calédonie" },
+  { value: "Pacific/Tahiti", label: "Polynésie française" },
+];
+
 function Section({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <section className="space-y-3 p-5">
@@ -67,6 +82,27 @@ export function DisplayTab() {
               onChange={(e) => update((s) => ({ ...s, title: { ...s.title, highlightExams: e.target.checked } }))}
             />
             Préfixer les examens par « EXAMEN »
+          </label>
+        </Section>
+
+        <Section title="Lieu et horaires" hint="Le lieu s'affiche directement sous le titre dans le calendrier.">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={settings.location.teachers}
+              onChange={(e) => update((s) => ({ ...s, location: { ...s.location, teachers: e.target.checked } }))}
+            />
+            Ajouter l'enseignant après la salle (« Salle 5.202 · Jean Dupont »)
+          </label>
+          <label className="block max-w-xs text-sm">
+            <span className="mb-1.5 block font-medium text-slate-700">Fuseau horaire</span>
+            <Select value={settings.timeZone} onChange={(e) => update({ timeZone: e.target.value })}>
+              {[...new Set([settings.timeZone, ...TIME_ZONES.map((z) => z.value)])].map((value) => (
+                <option key={value} value={value}>
+                  {TIME_ZONES.find((z) => z.value === value)?.label ?? value}
+                </option>
+              ))}
+            </Select>
           </label>
         </Section>
 

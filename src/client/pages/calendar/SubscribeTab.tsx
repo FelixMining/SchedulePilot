@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, type ReactNode } from "react";
-import { api, feedUrl, profileUrl, webcalUrl } from "../../api";
+import { api, feedUrl, webcalUrl } from "../../api";
 import { ColorPicker } from "../../components/ColorPicker";
 import { Button, Card, CopyField, cx, ErrorMessage, Toggle } from "../../components/ui";
 import type { SessionType } from "../../../shared/extract";
@@ -112,22 +112,19 @@ export function SubscribeTab() {
           )}
         </Step>
 
-        <Step n={2} title="Ajoutez-les à Apple Calendar">
+        <Step n={2} title="Abonnez-vous dans Apple Calendar">
           <p className="text-sm text-slate-500">
             {feeds.length > 1
-              ? `Un seul fichier abonne votre iPhone ou votre Mac aux ${feeds.length} calendriers d'un coup.`
-              : "Un seul fichier abonne votre iPhone ou votre Mac à votre calendrier."}
+              ? `Ajoutez chacun des ${feeds.length} calendriers de la liste : un clic sur « S'abonner » ouvre directement Calendrier.`
+              : "Cliquez sur « S'abonner » : Calendrier s'ouvre directement."}
           </p>
-          <a
-            href={profileUrl(token)}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            Installer dans Apple Calendar
-          </a>
           <ul className="list-disc space-y-1 pl-5 text-xs text-slate-500">
-            <li>iPhone : ouvrez ce lien dans Safari, puis Réglages → Profil téléchargé → Installer.</li>
-            <li>Mac : double-cliquez sur le fichier téléchargé, puis Réglages Système → Profils → Installer.</li>
-            <li>Les couleurs proposées peuvent être modifiées dans Calendrier (clic droit → Infos).</li>
+            <li>Mac : Fichier → Nouvel abonnement à un calendrier, puis collez le lien.</li>
+            <li>
+              iPhone : Réglages → Calendrier → Comptes → Ajouter un compte → Autre → Ajouter un calendrier avec
+              abonnement.
+            </li>
+            <li>Choisissez une actualisation toutes les heures. La couleur se change avec un clic droit → Infos.</li>
           </ul>
         </Step>
       </Card>

@@ -23,7 +23,7 @@ const features = [
 const steps = [
   { title: "Collez le lien", text: "Le lien ICS de votre emploi du temps, fourni par l'ENT (ADE, Hyperplanning…)." },
   { title: "Ajustez", text: "Noms, couleurs, cours masqués : l'aperçu de la semaine se met à jour en direct." },
-  { title: "Abonnez-vous", text: "Un seul fichier ajoute tous vos calendriers à l'iPhone ou au Mac." },
+  { title: "Abonnez-vous", text: "Ajoutez les liens générés dans Apple Calendar, sur iPhone comme sur Mac." },
 ];
 
 function Before() {

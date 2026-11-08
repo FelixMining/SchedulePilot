@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Settings } from "../../shared/settings";
+import { isValidTimeZone } from "../../shared/timezone";
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Couleur invalide");
 const keywords = z.array(z.string().trim().min(1).max(60)).max(50);
@@ -8,6 +9,8 @@ export const settingsSchema = z.object({
   colorMode: z.enum(["course", "type", "single"]),
   examsSeparate: z.boolean(),
   singleColor: color,
+  timeZone: z.string().max(64).refine(isValidTimeZone, "Fuseau horaire inconnu"),
+  location: z.object({ teachers: z.boolean() }),
   title: z.object({
     typePosition: z.enum(["after", "before", "none"]),
     highlightExams: z.boolean(),

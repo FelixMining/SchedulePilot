@@ -20,7 +20,6 @@ The interface is in French since it's aimed at French university students.
 - **Hide by keyword**: e.g. everything containing "mentorat".
 - **Formatting options**: where the session type goes in the title, which details appear in the description, reminders before exams or every class.
 - **Colors**: Apple Calendar only supports one color per subscribed calendar, so events are split into several calendars, either one per course, one per session type, or a single one.
-- **One-tap install**: an Apple configuration profile subscribes an iPhone or a Mac to all the generated calendars at once.
 - **Live week preview**, rendered in the browser with the same code that builds the feeds, so it always matches what the calendar app will show.
 - **Resilient**: the upstream feed is cached; if the university server is down, the last good copy keeps being served. A cron trigger refreshes active calendars in the background.
 
@@ -50,7 +49,6 @@ src/
     render.ts    applies the user's settings to an event, splits events into calendars
     settings.ts  settings model and defaults
     calendar.ts  feed building
-    mobileconfig.ts  Apple configuration profile
   worker/        Cloudflare Worker
     routes/      auth, calendars, public feeds
     lib/         sessions, crypto, upstream fetching/caching
@@ -93,11 +91,10 @@ npm run deploy
 
 Each calendar gets a random token. The token is the only secret, so it can be regenerated from the UI if a link leaks.
 
-| URL                                | Content                                       |
-| ---------------------------------- | --------------------------------------------- |
-| `/feed/<token>.ics`                | every visible event, in one calendar          |
-| `/feed/<token>/<calendar>.ics`     | one of the generated calendars (course, type) |
-| `/feed/<token>/apple.mobileconfig` | Apple profile subscribing to all of them      |
+| URL                            | Content                                       |
+| ------------------------------ | --------------------------------------------- |
+| `/feed/<token>.ics`            | every visible event, in one calendar          |
+| `/feed/<token>/<calendar>.ics` | one of the generated calendars (course, type) |
 
 ## Ideas
 

@@ -2,6 +2,7 @@ import { extractEvent, type EventInfo } from "./extract";
 import { getProperty, getText, icsDateToIso, parseIcs, serializeIcs, setRaw, setText, type IcsComponent } from "./ics";
 import { renderEvent } from "./render";
 import type { Settings } from "./settings";
+import { buildVTimezone, localizeEvent } from "./timezone";
 
 interface SourceEvent {
   component: IcsComponent;
@@ -55,20 +56,24 @@ export function buildFeed(source: string, settings: Settings, options: FeedOptio
   setRaw(output, "CALSCALE", "GREGORIAN");
   setRaw(output, "METHOD", "PUBLISH");
   setText(output, "X-WR-CALNAME", options.name);
-  const tz = getProperty(calendar, "X-WR-TIMEZONE");
-  if (tz) output.properties.push(tz);
+  setRaw(output, "X-WR-TIMEZONE", settings.timeZone);
   if (options.color) setRaw(output, "X-APPLE-CALENDAR-COLOR", options.color.toUpperCase());
   const refresh = `PT${options.refreshMinutes ?? 60}M`;
   setRaw(output, "REFRESH-INTERVAL", refresh, [{ name: "VALUE", value: "DURATION" }]);
   setRaw(output, "X-PUBLISHED-TTL", refresh);
 
-  // Keep VTIMEZONE and friends untouched so TZID references stay valid.
-  output.components.push(...calendar.components.filter((c) => c.name !== "VEVENT"));
+  // Keep the source's VTIMEZONEs so its own TZID references stay valid.
+  const sourceZones = calendar.components.filter((c) => c.name !== "VEVENT");
+  output.components.push(...sourceZones);
+  const zone = buildVTimezone(settings.timeZone);
+  const hasZone = sourceZones.some((c) => c.name === "VTIMEZONE" && getText(c, "TZID") === settings.timeZone);
+  if (zone && !hasZone) output.components.push(zone);
 
   for (const { component, info } of readSource(calendar)) {
     const r = renderEvent(info, settings);
     if (r.hidden || (options.feed !== null && r.feed !== options.feed)) continue;
 
+    localizeEvent(component, settings.timeZone);
     setText(component, "SUMMARY", r.title);
     setText(component, "LOCATION", r.location);
     setText(component, "DESCRIPTION", r.description);

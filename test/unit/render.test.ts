@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildFeed, readEvents } from "../../src/shared/calendar";
-import { getText, parseIcs } from "../../src/shared/ics";
-import { buildProfile } from "../../src/shared/mobileconfig";
+import { getProperty, getText, parseIcs } from "../../src/shared/ics";
 import { listFeeds, matchesKeyword, renderEvent } from "../../src/shared/render";
 import { DEFAULT_SETTINGS, resolveSettings, type Settings } from "../../src/shared/settings";
 import { ade } from "../fixtures";
@@ -24,7 +23,10 @@ describe("renderEvent", () => {
   it("builds a clean title, location and description", () => {
     const r = renderEvent(byUid("ADEevent-0002"), settings());
     expect(r.title).toBe("Algorithmique 1 · TD");
-    expect(r.location).toBe("Salle 5.202");
+    expect(r.location).toBe("Salle 5.202 · Claire Martin");
+    expect(renderEvent(byUid("ADEevent-0002"), settings({ location: { teachers: false } })).location).toBe(
+      "Salle 5.202",
+    );
     expect(r.description).toBe("TD · Salle 5.202\nClaire Martin\nHAI101I");
   });
 
@@ -107,6 +109,22 @@ describe("buildFeed", () => {
     expect(exams).toContain("X-APPLE-CALENDAR-COLOR:#EF4444");
   });
 
+  it("writes times in the chosen time zone", () => {
+    const ics = buildFeed(ade, settings(), { name: "Fac", feed: null });
+    const cal = parseIcs(ics);
+    const first = cal.components.find((c) => c.name === "VEVENT")!;
+    expect(getProperty(first, "DTSTART")).toEqual({
+      name: "DTSTART",
+      params: [{ name: "TZID", value: "Europe/Paris" }],
+      value: "20990105T080000",
+    });
+    expect(ics).toContain("X-WR-TIMEZONE:Europe/Paris");
+    expect(ics).not.toMatch(/DTSTART:\d{8}T\d{6}Z/);
+
+    const summer = buildFeed(ade, settings({ timeZone: "America/Guadeloupe" }), { name: "Fac", feed: null });
+    expect(summer).toContain("DTSTART;TZID=America/Guadeloupe:20990105T030000");
+  });
+
   it("keeps everything visible in the full feed", () => {
     const all = buildFeed(ade, settings({ hideKeywords: ["sport"] }), { name: "Fac", feed: null });
     expect(summaries(all)).toHaveLength(6);
@@ -123,23 +141,5 @@ describe("resolveSettings", () => {
     expect(s.examKeywords).toEqual(DEFAULT_SETTINGS.examKeywords);
     expect(s.courses).toEqual({ A: { hidden: true } });
     expect(resolveSettings(null)).toEqual(DEFAULT_SETTINGS);
-  });
-});
-
-describe("buildProfile", () => {
-  it("lists every calendar with stable identifiers", async () => {
-    const options = {
-      identifier: "dev.schedulepilot.abc",
-      name: "Fac",
-      calendars: [
-        { key: "hai101i", name: "Algo & co", url: "https://schedulepilot.dev/feed/abc/hai101i.ics" },
-        { key: "examens", name: "Examens", url: "https://schedulepilot.dev/feed/abc/examens.ics" },
-      ],
-    };
-    const profile = await buildProfile(options);
-    expect(profile).toContain("<string>schedulepilot.dev/feed/abc/hai101i.ics</string>");
-    expect(profile).toContain("Algo &amp; co");
-    expect(profile.match(/com\.apple\.subscribedcalendar\.account/g)).toHaveLength(2);
-    expect(await buildProfile(options)).toBe(profile);
   });
 });

@@ -80,7 +80,3 @@ export function feedUrl(token: string, feed?: string): string {
 export function webcalUrl(url: string): string {
   return url.replace(/^https?:/, "webcal:");
 }
-
-export function profileUrl(token: string): string {
-  return `${window.location.origin}/feed/${token}/apple.mobileconfig`;
-}

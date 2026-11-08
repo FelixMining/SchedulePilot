@@ -16,9 +16,15 @@ export interface Settings {
   examsSeparate: boolean;
   /** Color of the calendar in "single" mode. */
   singleColor: string;
+  /** Times are written in this zone, so calendar apps do not show a second (GMT) time. */
+  timeZone: string;
   title: {
     typePosition: TypePosition;
     highlightExams: boolean;
+  };
+  location: {
+    /** Calendar apps show the location under the title: a good spot for the teacher. */
+    teachers: boolean;
   };
   description: {
     type: boolean;
@@ -60,7 +66,9 @@ export const DEFAULT_SETTINGS: Settings = {
   colorMode: "course",
   examsSeparate: true,
   singleColor: "#3b82f6",
+  timeZone: "Europe/Paris",
   title: { typePosition: "after", highlightExams: true },
+  location: { teachers: true },
   description: { type: true, rooms: true, teachers: true, course: true, groups: false },
   examKeywords: ["examen", "partiel", "contrôle", "CC", "DS", "évaluation", "soutenance", "rattrapage"],
   hideKeywords: [],
@@ -86,7 +94,9 @@ export function resolveSettings(stored: unknown): Settings {
     colorMode: pick("colorMode"),
     examsSeparate: pick("examsSeparate"),
     singleColor: pick("singleColor"),
+    timeZone: pick("timeZone"),
     title: pick("title"),
+    location: pick("location"),
     description: pick("description"),
     examKeywords: pick("examKeywords"),
     hideKeywords: pick("hideKeywords"),

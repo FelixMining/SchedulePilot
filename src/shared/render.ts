@@ -114,7 +114,9 @@ export function renderEvent(info: EventInfo, settings: Settings): RenderedEvent 
     type,
     name,
     title,
-    location: info.rooms.join(", "),
+    location: [info.rooms.join(", "), settings.location.teachers ? info.teachers.join(", ") : ""]
+      .filter(Boolean)
+      .join(" · "),
     description: lines.join("\n"),
     feed,
     color,

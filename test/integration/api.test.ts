@@ -108,11 +108,6 @@ describe("calendars and feeds", () => {
     expect(exams.data).toContain("TRIGGER:-P1D");
 
     expect((await ctx.request("GET", `/feed/${calendar.feedToken}/inconnu.ics`)).status).toBe(404);
-
-    const profile = await ctx.request("GET", `/feed/${calendar.feedToken}/apple.mobileconfig`);
-    expect(profile.status).toBe(200);
-    expect(profile.data).toContain(`localhost/feed/${calendar.feedToken}/hai101i.ics`);
-    expect(profile.data).toContain(`localhost/feed/${calendar.feedToken}/examens.ics`);
   });
 
   it("validates settings", async () => {
