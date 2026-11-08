@@ -6,6 +6,8 @@ import { AccountPage } from "./pages/AccountPage";
 import { AuthPage } from "./pages/AuthPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { GuidePage } from "./pages/GuidePage";
+import { LegalNoticePage, PrivacyPage, TermsPage } from "./pages/LegalPages";
 import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
@@ -54,5 +56,9 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  { path: "/guide/:app?", element: <GuidePage /> },
+  { path: "/mentions-legales", element: <LegalNoticePage /> },
+  { path: "/confidentialite", element: <PrivacyPage /> },
+  { path: "/conditions", element: <TermsPage /> },
   { path: "*", element: <NotFoundPage /> },
 ]);

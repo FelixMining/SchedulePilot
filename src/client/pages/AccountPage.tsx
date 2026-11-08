@@ -55,6 +55,24 @@ function ChangePassword() {
   );
 }
 
+function ExportData() {
+  return (
+    <Card className="p-6">
+      <h2 className="font-semibold">Vos données</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Téléchargez tout ce que SchedulePilot conserve sur vous : compte, calendriers et réglages (fichier JSON).
+      </p>
+      <a
+        href="/api/auth/me/export"
+        download
+        className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-300 hover:bg-slate-50"
+      >
+        Télécharger mes données
+      </a>
+    </Card>
+  );
+}
+
 function DeleteAccount() {
   const [password, setPassword] = useState("");
   const qc = useQueryClient();
@@ -111,6 +129,7 @@ export function AccountPage() {
         <p className="mt-1 text-sm text-slate-500">{data?.user?.email}</p>
       </div>
       <ChangePassword />
+      <ExportData />
       <DeleteAccount />
     </div>
   );

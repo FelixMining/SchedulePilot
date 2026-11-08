@@ -52,7 +52,8 @@ export interface EventsResponse {
 export const api = {
   me: () => request<{ user: User | null }>("GET", "/auth/me"),
   login: (email: string, password: string) => request<{ user: User }>("POST", "/auth/login", { email, password }),
-  register: (email: string, password: string) => request<{ user: User }>("POST", "/auth/register", { email, password }),
+  register: (email: string, password: string, acceptTerms: boolean) =>
+    request<{ user: User }>("POST", "/auth/register", { email, password, acceptTerms }),
   logout: () => request<void>("POST", "/auth/logout"),
   changePassword: (current: string, next: string) => request<void>("POST", "/auth/password", { current, next }),
   deleteAccount: (password: string) => request<void>("DELETE", "/auth/me", { password }),

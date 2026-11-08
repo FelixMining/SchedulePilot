@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router";
 import { useLogout, useMe } from "../auth";
 import { Logo } from "./Logo";
+import { SiteFooter } from "./PublicLayout";
 import { cx } from "./ui";
 
 export function AppLayout() {
@@ -15,7 +16,7 @@ export function AppLayout() {
     );
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
           <div className="flex items-center gap-3 sm:gap-6">
@@ -40,9 +41,10 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         <Outlet />
       </main>
+      <SiteFooter />
     </div>
   );
 }

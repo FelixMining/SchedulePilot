@@ -10,10 +10,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [password, setPassword] = useState("");
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [accepted, setAccepted] = useState(false);
   const isLogin = mode === "login";
 
   const submit = useMutation({
-    mutationFn: () => (isLogin ? api.login(email, password) : api.register(email, password)),
+    mutationFn: () => (isLogin ? api.login(email, password) : api.register(email, password, accepted)),
     onSuccess: ({ user }) => {
       qc.setQueryData(["me"], { user });
       navigate("/app");
@@ -30,6 +31,9 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       <Logo />
       <Card className="mt-8 w-full max-w-sm p-6">
         <h1 className="text-lg font-semibold">{isLogin ? "Connexion" : "Créer un compte"}</h1>
+        {!isLogin && (
+          <p className="mt-1 text-sm text-slate-500">Gratuit, pour toujours. Aucun moyen de paiement demandé.</p>
+        )}
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <Field label="Adresse e-mail">
             <Input
@@ -51,6 +55,28 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             />
           </Field>
           <ErrorMessage error={submit.error} />
+          {!isLogin && (
+            <label className="flex items-start gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                required
+                checked={accepted}
+                onChange={(e) => setAccepted(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                J'accepte les{" "}
+                <Link to="/conditions" target="_blank" className="text-brand-700 underline">
+                  conditions d'utilisation
+                </Link>{" "}
+                et j'ai lu la{" "}
+                <Link to="/confidentialite" target="_blank" className="text-brand-700 underline">
+                  politique de confidentialité
+                </Link>
+                .
+              </span>
+            </label>
+          )}
           <Button type="submit" className="w-full" loading={submit.isPending}>
             {isLogin ? "Se connecter" : "Créer mon compte"}
           </Button>
