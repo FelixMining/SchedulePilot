@@ -12,7 +12,8 @@ export const settingsSchema = z.object({
   timeZone: z.string().max(64).refine(isValidTimeZone, "Fuseau horaire inconnu"),
   location: z.object({ teachers: z.boolean() }),
   title: z.object({
-    typePosition: z.enum(["after", "before", "none"]),
+    typePosition: z.enum(["after", "before", "none", "custom"]),
+    template: z.string().max(200),
     highlightExams: z.boolean(),
   }),
   description: z.object({
@@ -39,4 +40,5 @@ export const settingsSchema = z.object({
       }),
     )
     .refine((c) => Object.keys(c).length <= 500, "Trop de cours"),
+  hiddenEvents: z.array(z.string().max(300)).max(5000),
 }) satisfies z.ZodType<Settings>;

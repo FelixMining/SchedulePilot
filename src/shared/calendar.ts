@@ -10,6 +10,10 @@ interface SourceEvent {
 }
 
 function readSource(calendar: IcsComponent): SourceEvent[] {
+  return assignIds(readRaw(calendar));
+}
+
+function readRaw(calendar: IcsComponent): SourceEvent[] {
   return calendar.components
     .filter((c) => c.name === "VEVENT")
     .map((component) => ({
@@ -25,6 +29,16 @@ function readSource(calendar: IcsComponent): SourceEvent[] {
         },
       ),
     }));
+}
+
+/** Events sharing a UID (recurring series, sloppy exports) get the start time added to their id. */
+function assignIds(events: SourceEvent[]): SourceEvent[] {
+  const counts = new Map<string, number>();
+  for (const { info } of events) counts.set(info.uid, (counts.get(info.uid) ?? 0) + 1);
+  for (const { info } of events) {
+    if (!info.uid || counts.get(info.uid)! > 1) info.id = `${info.uid}|${info.start ?? ""}`;
+  }
+  return events;
 }
 
 export function readEvents(source: string): EventInfo[] {

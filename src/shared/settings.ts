@@ -1,7 +1,7 @@
 import type { SessionType } from "./extract";
 
 export type ColorMode = "course" | "type" | "single";
-export type TypePosition = "after" | "before" | "none";
+export type TypePosition = "after" | "before" | "none" | "custom";
 
 export interface CourseSettings {
   name?: string;
@@ -20,6 +20,8 @@ export interface Settings {
   timeZone: string;
   title: {
     typePosition: TypePosition;
+    /** Used when typePosition is "custom", e.g. "{num_salle} · {matiere} {type}". */
+    template: string;
     highlightExams: boolean;
   };
   location: {
@@ -43,6 +45,8 @@ export interface Settings {
   };
   typeColors: Record<SessionType, string>;
   courses: Record<string, CourseSettings>;
+  /** Single occurrences hidden by the user (see `EventInfo.id`). */
+  hiddenEvents: string[];
 }
 
 export const PALETTE = [
@@ -67,7 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   examsSeparate: true,
   singleColor: "#3b82f6",
   timeZone: "Europe/Paris",
-  title: { typePosition: "after", highlightExams: true },
+  title: { typePosition: "after", template: "{num_salle} · {matiere} {type}", highlightExams: true },
   location: { teachers: true },
   description: { type: true, rooms: true, teachers: true, course: true, groups: false },
   examKeywords: ["examen", "partiel", "contrôle", "CC", "DS", "évaluation", "soutenance", "rattrapage"],
@@ -75,6 +79,7 @@ export const DEFAULT_SETTINGS: Settings = {
   alarms: { examDaysBefore: 1, minutesBefore: 0 },
   typeColors: { CM: "#3b82f6", TD: "#22c55e", TP: "#a855f7", Examen: EXAM_COLOR, Autre: "#64748b" },
   courses: {},
+  hiddenEvents: [],
 };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -103,5 +108,6 @@ export function resolveSettings(stored: unknown): Settings {
     alarms: pick("alarms"),
     typeColors: pick("typeColors"),
     courses: isObject(s.courses) ? (s.courses as Settings["courses"]) : {},
+    hiddenEvents: Array.isArray(s.hiddenEvents) ? (s.hiddenEvents as string[]) : [],
   };
 }

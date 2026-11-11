@@ -1,8 +1,11 @@
 import type { EventInfo, SessionType } from "./extract";
 import { EXAM_COLOR, PALETTE, type Settings } from "./settings";
 
+export type HiddenReason = "course" | "keyword" | "event" | null;
+
 export interface RenderedEvent {
   hidden: boolean;
+  hiddenReason: HiddenReason;
   exam: boolean;
   type: SessionType;
   name: string;
@@ -58,6 +61,37 @@ export function courseName(info: Pick<EventInfo, "key" | "courseName">, settings
   return settings.courses[info.key]?.name?.trim() || info.courseName;
 }
 
+export const TITLE_VARIABLES = [
+  { name: "matiere", label: "Nom de la matière", example: "Algorithmique" },
+  { name: "type", label: "Type de séance", example: "TD" },
+  { name: "num_salle", label: "Numéro de salle", example: "5.202" },
+  { name: "salle", label: "Salle complète", example: "Salle 5.202" },
+  { name: "prof", label: "Enseignant", example: "Jean Dupont" },
+  { name: "code", label: "Code du cours", example: "HAI101I" },
+  { name: "titre_original", label: "Titre d'origine", example: "HAI101I Portail Info GrC" },
+] as const;
+
+/** "Salle info 36.205" → "36.205", "Amphi 5.01" → "5.01". */
+export const roomNumber = (room: string) => room.replace(/^(salle info|salle|amphi)\s+/i, "");
+
+const SEPARATOR = "[·•|—–\\-/,:]";
+
+/**
+ * Replaces {variables}, then tidies up separators left dangling by empty values:
+ * "{num_salle} · {matiere}" without a room gives "Algorithmique", not "· Algorithmique".
+ */
+export function renderTemplate(template: string, vars: Record<string, string>): string {
+  let out = template
+    .replace(/\{(\w+)\}/g, (_, key: string) => vars[key] ?? "")
+    .replace(/\(\s*\)|\[\s*\]/g, "")
+    .replace(/\s+/g, " ");
+  const leading = new RegExp(`^\\s*${SEPARATOR}+\\s*`);
+  const trailing = new RegExp(`\\s*${SEPARATOR}+\\s*$`);
+  const repeated = new RegExp(`(\\s${SEPARATOR})(\\s*${SEPARATOR})+(?=\\s)`, "g");
+  for (let i = 0; i < 3; i++) out = out.replace(leading, "").replace(trailing, "").replace(repeated, "$1");
+  return out.trim();
+}
+
 export const feedSlug = (key: string) =>
   normalize(key)
     .replace(/[^a-z0-9]+/g, "-")
@@ -68,14 +102,32 @@ export function renderEvent(info: EventInfo, settings: Settings): RenderedEvent 
   const name = courseName(info, settings);
   const exam = matchesKeyword(`${info.original.summary} ${info.courseName}`, settings.examKeywords);
   const type: SessionType = exam ? "Examen" : info.type;
-  const hidden =
-    (settings.courses[info.key]?.hidden ?? false) ||
-    matchesKeyword(`${info.original.summary} ${info.courseName}`, settings.hideKeywords);
+  const hiddenReason: HiddenReason = settings.hiddenEvents.includes(info.id)
+    ? "event"
+    : settings.courses[info.key]?.hidden
+      ? "course"
+      : matchesKeyword(`${info.original.summary} ${info.courseName}`, settings.hideKeywords)
+        ? "keyword"
+        : null;
 
+  const typeLabel = type === "Autre" ? "" : type;
   let title = name;
-  if (exam && settings.title.highlightExams) title = `EXAMEN · ${name}`;
-  else if (type !== "Autre" && settings.title.typePosition === "after") title = `${name} · ${type}`;
-  else if (type !== "Autre" && settings.title.typePosition === "before") title = `${type} · ${name}`;
+  if (settings.title.typePosition === "custom") {
+    const vars: Record<string, string> = {
+      matiere: name,
+      // The "EXAMEN" prefix already says it.
+      type: exam && settings.title.highlightExams ? "" : typeLabel,
+      num_salle: info.rooms.map(roomNumber).join(", "),
+      salle: info.rooms.join(", "),
+      prof: info.teachers.join(", "),
+      code: info.code,
+      titre_original: info.original.summary,
+    };
+    title = renderTemplate(settings.title.template, vars) || name;
+    if (exam && settings.title.highlightExams) title = `EXAMEN · ${title}`;
+  } else if (exam && settings.title.highlightExams) title = `EXAMEN · ${name}`;
+  else if (typeLabel && settings.title.typePosition === "after") title = `${name} · ${typeLabel}`;
+  else if (typeLabel && settings.title.typePosition === "before") title = `${typeLabel} · ${name}`;
 
   const d = settings.description;
   const lines: string[] = [];
@@ -109,7 +161,8 @@ export function renderEvent(info: EventInfo, settings: Settings): RenderedEvent 
   }
 
   return {
-    hidden,
+    hidden: hiddenReason !== null,
+    hiddenReason,
     exam,
     type,
     name,

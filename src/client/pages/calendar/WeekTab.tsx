@@ -76,12 +76,30 @@ function initialWeek(events: EditorEvent[]): Date {
 }
 
 function CourseQuickEdit({ event }: { event: EditorEvent }) {
-  const { settings, updateCourse } = useEditor();
+  const { settings, updateCourse, setEventHidden } = useEditor();
   const { info, view } = event;
   const course = settings.courses[info.key] ?? {};
+  const eventHidden = view.hiddenReason === "event";
 
   return (
     <div className="space-y-4 text-sm">
+      <div className="space-y-2">
+        <p className="text-xs font-medium tracking-wide text-slate-400 uppercase">Cet événement</p>
+        <Button
+          variant={eventHidden ? "secondary" : "danger"}
+          size="sm"
+          className="w-full"
+          onClick={() => setEventHidden(info.id, !eventHidden)}
+        >
+          {eventHidden ? "Réafficher cet événement" : "Masquer cet événement uniquement"}
+        </Button>
+        {view.hiddenReason === "keyword" && (
+          <p className="text-xs text-slate-500">Masqué par un mot-clé (onglet Affichage).</p>
+        )}
+      </div>
+      <p className="border-t border-slate-100 pt-3 text-xs font-medium tracking-wide text-slate-400 uppercase">
+        Toute la matière
+      </p>
       <label className="block">
         <span className="mb-1.5 block font-medium text-slate-700">Nom de la matière</span>
         <Input
@@ -204,7 +222,7 @@ export function WeekTab() {
         {hiddenCount > 0 && (
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} />
-            Afficher les {hiddenCount} événements masqués
+            {hiddenCount > 1 ? `Afficher les ${hiddenCount} événements masqués` : "Afficher l'événement masqué"}
           </label>
         )}
       </div>

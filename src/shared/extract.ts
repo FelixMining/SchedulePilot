@@ -15,6 +15,8 @@ export interface EventFields {
 }
 
 export interface EventInfo {
+  /** Stable identifier of this occurrence: the UID, plus the start time when the UID is shared. */
+  id: string;
   uid: string;
   start: string | null;
   end: string | null;
@@ -117,6 +119,7 @@ export function extractEvent(uid: string, start: string | null, end: string | nu
     .filter((r): r is string => r !== null);
 
   return {
+    id: uid,
     uid,
     start,
     end,

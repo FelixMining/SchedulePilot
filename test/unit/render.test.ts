@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildFeed, readEvents } from "../../src/shared/calendar";
 import { getProperty, getText, parseIcs } from "../../src/shared/ics";
-import { listFeeds, matchesKeyword, renderEvent } from "../../src/shared/render";
+import { listFeeds, matchesKeyword, renderEvent, renderTemplate } from "../../src/shared/render";
 import { DEFAULT_SETTINGS, resolveSettings, type Settings } from "../../src/shared/settings";
 import { ade } from "../fixtures";
 
@@ -56,13 +56,75 @@ describe("renderEvent", () => {
 
   it("follows the title and description options", () => {
     const s = settings({
-      title: { typePosition: "before", highlightExams: false },
+      title: { ...DEFAULT_SETTINGS.title, typePosition: "before", highlightExams: false },
       description: { type: false, rooms: false, teachers: false, course: false, groups: true },
     });
     const r = renderEvent(byUid("ADEevent-0003"), s);
     expect(r.title).toBe("TP · Algorithmique 1");
     expect(r.description).toBe("Groupes : INFO GR C");
     expect(renderEvent(byUid("ADEevent-0004"), s).title).toBe("Examen · Bases des mathématiques pour l'informatique");
+  });
+});
+
+describe("custom titles", () => {
+  const custom = (template: string, highlightExams = true) =>
+    settings({ title: { typePosition: "custom", template, highlightExams } });
+
+  it("puts the room first", () => {
+    expect(renderEvent(byUid("ADEevent-0002"), custom("{num_salle} · {matiere} {type}")).title).toBe(
+      "5.202 · Algorithmique 1 TD",
+    );
+    expect(renderEvent(byUid("ADEevent-0003"), custom("{num_salle} · {matiere}")).title).toBe(
+      "36.204 · Algorithmique 1",
+    );
+    expect(renderEvent(byUid("ADEevent-0006"), custom("{salle} · {prof}")).title).toBe(
+      "Amphi 5.06, Amphi 5.01 · Anne-Marie De La Fontaine",
+    );
+  });
+
+  it("drops separators around missing values", () => {
+    expect(renderEvent(byUid("ADEevent-0007"), custom("{num_salle} · {matiere} {type}")).title).toBe("SPORT");
+    expect(renderEvent(byUid("ADEevent-0002"), custom("{code} - {titre_original}")).title).toBe(
+      "HAI101I - HAI101I Portail Info GrC",
+    );
+  });
+
+  it("keeps highlighting exams and falls back on the name", () => {
+    expect(renderEvent(byUid("ADEevent-0004"), custom("{num_salle} · {matiere} {type}")).title).toBe(
+      "EXAMEN · 5.06 · Bases des mathématiques pour l'informatique",
+    );
+    expect(renderEvent(byUid("ADEevent-0004"), custom("{num_salle} · {matiere} {type}", false)).title).toBe(
+      "5.06 · Bases des mathématiques pour l'informatique Examen",
+    );
+    expect(renderEvent(byUid("ADEevent-0002"), custom("{inconnu}")).title).toBe("Algorithmique 1");
+  });
+});
+
+describe("renderTemplate", () => {
+  it("cleans up dangling separators and brackets", () => {
+    const vars = { a: "A", b: "", c: "C" };
+    expect(renderTemplate("{b} · {a}", vars)).toBe("A");
+    expect(renderTemplate("{a} · {b} · {c}", vars)).toBe("A · C");
+    expect(renderTemplate("{a} - {b}", vars)).toBe("A");
+    expect(renderTemplate("[{b}] {a}", vars)).toBe("A");
+    expect(renderTemplate("{a}-{c}", vars)).toBe("A-C");
+  });
+});
+
+describe("hidden events", () => {
+  it("hides a single occurrence", () => {
+    const s = settings({ hiddenEvents: ["ADEevent-0002"] });
+    expect(renderEvent(byUid("ADEevent-0002"), s)).toMatchObject({ hidden: true, hiddenReason: "event" });
+    expect(renderEvent(byUid("ADEevent-0003"), s).hidden).toBe(false);
+    expect(buildFeed(ade, s, { name: "Fac", feed: null })).not.toContain("ADEevent-0002");
+  });
+
+  it("uses the start time when a UID is shared", () => {
+    const twice = ade.replace("UID:ADEevent-0003", "UID:ADEevent-0002");
+    const ids = readEvents(twice).map((e) => e.id);
+    expect(ids).toContain("ADEevent-0002|2099-01-06T07:45:00Z");
+    expect(ids).toContain("ADEevent-0002|2099-01-07T07:45:00Z");
+    expect(ids).toContain("ADEevent-0001");
   });
 });
 
@@ -137,7 +199,7 @@ describe("resolveSettings", () => {
   it("fills missing fields from defaults", () => {
     const s = resolveSettings({ colorMode: "type", title: { typePosition: "none" }, courses: { A: { hidden: true } } });
     expect(s.colorMode).toBe("type");
-    expect(s.title).toEqual({ typePosition: "none", highlightExams: true });
+    expect(s.title).toEqual({ ...DEFAULT_SETTINGS.title, typePosition: "none" });
     expect(s.examKeywords).toEqual(DEFAULT_SETTINGS.examKeywords);
     expect(s.courses).toEqual({ A: { hidden: true } });
     expect(resolveSettings(null)).toEqual(DEFAULT_SETTINGS);

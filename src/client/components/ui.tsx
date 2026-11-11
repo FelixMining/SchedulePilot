@@ -1,7 +1,7 @@
 import {
   useState,
   type ButtonHTMLAttributes,
-  type InputHTMLAttributes,
+  type ComponentProps,
   type ReactNode,
   type SelectHTMLAttributes,
 } from "react";
@@ -55,7 +55,7 @@ export function Spinner({ className }: { className?: string }) {
   );
 }
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       {...props}

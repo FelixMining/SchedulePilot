@@ -6,6 +6,7 @@ import { Card, Select } from "../../components/ui";
 import { formatDateTime } from "../../format";
 import type { Settings, TypePosition } from "../../../shared/settings";
 import { useEditor, type EditorEvent } from "./editor";
+import { TitleTemplateEditor } from "./TitleTemplateEditor";
 
 const DESCRIPTION_FIELDS: { key: keyof Settings["description"]; label: string }[] = [
   { key: "type", label: "Type de séance (CM, TD, TP…)" },
@@ -73,8 +74,10 @@ export function DisplayTab() {
               { value: "after", label: "Algorithmique · TD" },
               { value: "before", label: "TD · Algorithmique" },
               { value: "none", label: "Algorithmique" },
+              { value: "custom", label: "Personnalisé" },
             ]}
           />
+          {settings.title.typePosition === "custom" && <TitleTemplateEditor />}
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"

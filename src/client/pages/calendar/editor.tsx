@@ -20,6 +20,7 @@ interface EditorValue {
   eventsLoading: boolean;
   update: (patch: Partial<Settings> | ((s: Settings) => Settings)) => void;
   updateCourse: (key: string, patch: Partial<CourseSettings>) => void;
+  setEventHidden: (id: string, hidden: boolean) => void;
   saveState: SaveState;
   saveError: unknown;
 }
@@ -101,6 +102,15 @@ export function EditorProvider({ calendar, children }: { calendar: Calendar; chi
     [update],
   );
 
+  const setEventHidden = useCallback<EditorValue["setEventHidden"]>(
+    (id, hidden) =>
+      update((s) => ({
+        ...s,
+        hiddenEvents: hidden ? [...new Set([...s.hiddenEvents, id])] : s.hiddenEvents.filter((e) => e !== id),
+      })),
+    [update],
+  );
+
   // First visit: give every course its own color, so no two courses look alike.
   const colored = useRef(false);
   useEffect(() => {
@@ -137,6 +147,7 @@ export function EditorProvider({ calendar, children }: { calendar: Calendar; chi
     eventsLoading: eventsQuery.isPending,
     update,
     updateCourse,
+    setEventHidden,
     saveState,
     saveError,
   };

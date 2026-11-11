@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ColorPicker } from "../../components/ColorPicker";
-import { Badge, Card, cx, Input, Toggle } from "../../components/ui";
+import { Badge, Button, Card, cx, Input, Toggle } from "../../components/ui";
 import { formatDateTime } from "../../format";
 import { summarizeCourses, type CourseSummary } from "./courses";
 import { useEditor } from "./editor";
@@ -57,8 +57,11 @@ function CourseRow({ course }: { course: CourseSummary }) {
 }
 
 export function CoursesTab() {
-  const { events } = useEditor();
+  const { events, setEventHidden } = useEditor();
   const [filter, setFilter] = useState("");
+  const hiddenEvents = events
+    .filter((e) => e.view.hiddenReason === "event")
+    .sort((a, b) => (a.info.start ?? "").localeCompare(b.info.start ?? ""));
   const [showPast, setShowPast] = useState(false);
   const courses = useMemo(() => summarizeCourses(events), [events]);
 
@@ -116,6 +119,26 @@ export function CoursesTab() {
               </ul>
             </Card>
           )}
+        </section>
+      )}
+
+      {hiddenEvents.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-slate-700">Événements masqués un par un</h2>
+          <Card>
+            <ul className="divide-y divide-slate-100">
+              {hiddenEvents.map((e) => (
+                <li key={e.info.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: e.view.color }} />
+                  <span className="min-w-0 flex-1 truncate">{e.view.title}</span>
+                  <span className="shrink-0 text-slate-500">{formatDateTime(e.info.start)}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setEventHidden(e.info.id, false)}>
+                    Réafficher
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
         </section>
       )}
     </div>
